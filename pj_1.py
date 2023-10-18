@@ -6,7 +6,6 @@ from config import *
 
 class NetworkSocket:
     
-    
     def __init__(self) -> None:
         self.tcp_socket = None
         self.udp_socket = None
@@ -18,17 +17,17 @@ class NetworkSocket:
         # TCP server socket 생성
         server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server_socket.bind((host,port))
-        server_socket.listen(5)
+        server_socket.listen(10)
         
         return server_socket
-        
+
 
     @staticmethod
     def tcp_server_connect(server_socket: socket.socket) -> Tuple[socket.socket, any]:
         # Server_socket을 통해 client와의 connection 생성 
         # 생성된 connection socket(conn)과 client의 address(tcp_client_addr) 반환 
         conn, addr = server_socket.accept()
-        
+        print(str(addr),"에서 접속")
         return conn, addr
 
     @staticmethod
@@ -37,7 +36,7 @@ class NetworkSocket:
         # Server에 connection을 요청하고, server와 client 간 tcp socket(tcp_client_socket) 반환
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client_socket.connect((host, port))
-        
+        print(f"host: {host}, port : {port}")
         return client_socket
 
     @staticmethod
@@ -66,7 +65,7 @@ class NetworkSocket:
         
 
     def tcp_send(self, data: bytes) -> None:
-        # TCP socket(tcp_socket)을 통해 입력 받은 data 전송 
+        # TCP socket(tcp_socket)을 통해 입력 받은 data 전송
         self.tcp_socket.sendall(data)
         
         
