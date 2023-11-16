@@ -116,12 +116,17 @@ class FileTransfer:
 
     def tcp_file_send(self, filename: str, tcp_send_func: Callable)-> None:
         basename = os.path.basename(filename)
-        self.file_pointer = open(filename, "rb")
+
+        try:
+            self.file_pointer = open(filename, "rb")
+            if(self.file_pointer == None): 
+                raise Exception()
+        except:
+            print("[Error] file not found or opened");
+            return;
 
         # packet의 파일 이름(basename)을 전송한다.
-        #
-        # todo
-        #
+        self.tcp_file_name_transfer(filename, tcp_send_func)
         # 이름 전송 종료
 
         # 파일을 구성하는 data를 전송한다.
