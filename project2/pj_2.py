@@ -150,29 +150,28 @@ class FileTransfer:
             
     def tcp_file_receive(self, packet) -> int:
         packet_type, data = self.tcp_packet_unpack(packet)
-        
-
+    
         if packet_type == PACKET_TYPE_FILE_START:
             basename = data.decode(ENCODING)
             self.file_name = basename
             file_path = './downloads/(tcp) '+basename
             # 파일의 이름을 받아 file_path 위치에 self.file_pointer를 생성한다.
-            #
-            # todo
-            #
+            self.file_pointer = open(file_path, "ab")
             return 0
 
         elif packet_type == PACKET_TYPE_FILE_DATA:
             # self.file_pointer에 전송 받은 data를 저장한다.
-            # todo
-            # 
+            if(self.file_pointer == None):
+                return;
+            self.file_pointer.write(data)
             return 1
             
         elif packet_type == PACKET_TYPE_FILE_END:
             # 파일 전송이 끝난 것을 확인하고 file_pointer를 종료한다.
-            # 
-            # todo
-            #
+            if(self.file_pointer == None):
+                return;
+            self.file_pointer.close()
+            self.file_pointer = None
             return 2
 
     def udp_file_name_transfer(self, file_name: str, udp_send_func: Callable)-> None:
