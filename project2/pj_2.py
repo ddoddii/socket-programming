@@ -131,6 +131,10 @@ class FileTransfer:
 
         # 파일을 구성하는 data를 전송한다.
         # tcp_file_data_packet이 생성하는 packet을 tcp를 이용해 전부 전송한다.
+        dataLeft, packet = self.tcp_file_data_packet()
+        while(dataLeft and packet != None):
+            tcp_send_func(packet)
+            dataLeft, packet = self.tcp_file_data_packet()
         #
         # todo
         #
