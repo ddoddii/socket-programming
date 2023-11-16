@@ -135,16 +135,11 @@ class FileTransfer:
         while(dataLeft and packet != None):
             tcp_send_func(packet)
             dataLeft, packet = self.tcp_file_data_packet()
-        #
-        # todo
-        #
         # 파일 data 전송 종료
 
         # TCP_FILE_TRANSFER_END을 전송하여 
         # 파일의 전송이 끝냈음을 알린다.
-        #
-        # todo
-        #
+        tcp_send_func(TCP_FILE_TRANSFER_END)
         # TCP_FILE_TRANSFER_END을 전송 종료
         
 
