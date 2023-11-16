@@ -126,7 +126,7 @@ class FileTransfer:
             return;
 
         # packet의 파일 이름(basename)을 전송한다.
-        self.tcp_file_name_transfer(filename, tcp_send_func)
+        self.tcp_file_name_transfer(basename, tcp_send_func)
         # 이름 전송 종료
 
         # 파일을 구성하는 data를 전송한다.
