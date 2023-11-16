@@ -103,7 +103,7 @@ class FileTransfer:
     def udp_file_data(self) -> Tuple[bool, bytes]:
         # udp sender가 전송할 file data를 얻는다 (현재 전송할 data 찾기)
         # 결과값: file data
-        data = self.file_pointer.read(PACKET_SIZE -1 -2 -2)
+        data = self.file_pointer.read(PACKET_SIZE -1 -2 -2) # 1: data type, 2: ack num 3: datalen
         if data:
             return True, data
         else:
@@ -184,74 +184,67 @@ class FileTransfer:
         packet = self.udp_packet_pack(packet_type, self.udp_last_ack_num, data)
         udp_send_func(packet)
         # GBN, SR을 통한 재전송을 위해 packet과 전송 시간을 self.udp_send_packet에 저장한다.
-        # 또한 self.udp_lask_ack_num을 update하여 새로 전송할 packet의 ack_num을 update한다.
-        # 
-        # todo
-        #
+        # 또한 self.udp_last_ack_num을 update하여 새로 전송할 packet의 ack_num을 update한다.
+        self.udp_send_packet[self.udp_last_ack_num] = (time(),packet)
+        self.udp_last_ack_num = 0 if self.udp_last_ack_num == UDP_WINDOW_SIZE-1 else self.udp_last_ack_num+1
+        # TODO window 넘어가는 경우
 
     def udp_file_send(self, filename: str, udp_send_func: Callable) -> None:
         basename = os.path.basename(filename)
         self.file_pointer = open(filename, "rb")
         # udp를 통해 파일의 basename을 전송하고 ack를 기다린다.
         # hint : self.udp_file_name_transfer 함수를 활용할 것
-        # 
-        # todo
-        #
+        self.udp_file_name_transfer(basename, udp_send_func)
+
+        data_ready, data = self.udp_file_data() # packet size 에서 header 값 빼고 잘라줌
+        startTimer = self.udp_ack_num == self.udp_last_ack_num
         
-        data_ready, data = self.udp_file_data()
         while data_ready:
             if len(self.udp_send_packet) < UDP_WINDOW_SIZE: #window의 크기보다 전송한 패킷의 양의 적은 경우
-                # 
-                # todo
-                #
-
+                self.udp_send_with_record(PACKET_TYPE_FILE_DATA, data, udp_send_func)
                 data_ready, data = self.udp_file_data() # 다음 전송할 data를 준비한다.
 
             else:
                 # PIPELINE을 위한 window를 전체를 사용하여 ack를 기다리며 timeout에 대처한다.
                 # Timeout이 아닌 경우에는 Sleep(UDP_WAIT)를 사용한다.
-                #
-                # todo
-                #
+                # TODO 여기서 파이프라이닝으로 넘어가기
                 pass
+
         # 모든 파일 data의 ack를 기다리고 timeout에 대처한다.
-        #
-        # todo
-        #
+        if(startTimer):
+            sleep(UDP_WAIT)
+            if(self.udp_time_out()):
+                udp_pipeline()
         
         # 파일 전송이 완료되었음을 알리고 ack에 대비한다.
-        # 
-        # todo
-        #
+        udp_send_func(TCP_FILE_TRANSFER_END)
         
         # 파일 포인터를 제거한다.
         self.file_pointer.close()
         self.file_pointer = None
             
     def udp_file_receive(self, packet: bytes, udp_send_func: Callable) -> int:
+        
         ack_bytes = self.udp_ack_bytes(packet)
         packet_type, ack_num, data = self.udp_packet_unpack(packet)
-
+        
+        
         if packet_type != PACKET_TYPE_FILE_ACK:
             # 받은 packet에 대한 ack를 전송한다.
-            #
-            # todo
-            #
+            self.udp_ack_send(ack_bytes,udp_send_func)z
             pass
 
         if packet_type == PACKET_TYPE_FILE_START:  # file transfer start
             if self.file_pointer is not None:
                self.file_pointer.close()
-
             basename = data.decode(ENCODING)            
             self.file_name = basename
             file_path = './downloads/(udp) '+basename
             # 파일의 이름을 받아 file_path 위치에 self.file_pointer를 생성하고.
             # 그다음 받을 파일의 data의 시작 packet의 ack_num를 self.file_packet_start에 저장하여
             # 연속된 packet을 받을 수 있게 준비한다.
-            #
-            # todo
-            #
+            self.file_pointer = open(file_path, "ab")
+            self.file_packet_start = ack_num+1
             return 0
 
         elif packet_type == PACKET_TYPE_FILE_DATA:  # file transfer
@@ -259,18 +252,16 @@ class FileTransfer:
                 # 처음 받은 packet인지 확인하고
                 # 처음 받은 packet이라면 self.udp_recv_packet[ack_num]에 저장하고
                 # self.udp_recv_flag[ack_num]에서 확인할 수 있게 표시한다.
-                #
-                # todo
-                #
+                self.udp_recv_packet[ack_num] = data
+                self.udp_recv_flag = True
                 pass
-            
             # self.udp_recv_packet에 self.file_packet_start에서 부터 연속된
             # 패킷이 저장되어 있다면 이를 self.file_pointer를 이용해 파일로 저장하고 
             # self.udp_recv_flag를 update한다.
             # 또한 self.file_packet_start 역시 update한다.
-            # 
-            # todo
-            #
+            while self.udp_recv_flag[file_packet_start]:
+                file_pointer.write(self.udp_recv_packet[file_packet_start])
+                self.file_packet_start += 1
             return 1
 
             
@@ -281,13 +272,27 @@ class FileTransfer:
                 self.file_pointer = None
             return 2
         
-        elif packet_type == PACKET_TYPE_FILE_ACK:  # ack
+        elif packet_type == PACKET_TYPE_FILE_ACK:  # ack            
             # GBN, SR을 위해 self.udp_ack_windows를 update한다.
             # hint: self.udp_ack_num으로 부터 연속되게 ack를 받은 경우
             # window를 옮겨준다 (self.udp_send_packet에 저장된 packet도 처리해줄 것)
-            # 
-            # todo
-            #
+            # TODO
+            self.udp_ack_windows[ack_num] = True
+            first_nack_idx = self.udp_ack_windows.index(false)
+            
+            self.udp_ack_num = first_nack_idx
+            for ack_num in range(first_nack_idx):
+                self.udp_ack_num+=1
+                del self.udp_send_packet[ack_num]
+                if(self.udp_ack_num == self.udp_last_ack_num):
+                    # TO DO: 타이머 멈추기
+                    True
+                else:
+                    True
+                    # 타이머 다시 시작 udp_last_ack_num으로
+            if first_nack_idx>0:
+                self.udp_ack_windows = [udp_ack_windows[i] for i in range(first_nack_idx, UDP_MAX_ACK_NUM)]
+
             return 1
         return 1
 
@@ -304,10 +309,16 @@ class FileTransfer:
         # def udp_gbn () or def udp_sr()로 구현
          # hint: self.udp_send_packet[ack_num]에 저장시
         # (send time, packet)형태로 저장할 것
-        #
-        #
-        # udp_file_send()에서 사용
+        self.udp_gbn()
+        sleep(UDP_TIMEOUT)
+        if(self.udp_time_out()):
+            self.udp_pipeline()
         pass
+    
+    def udp_gbn(self) ->None:
+        for ack in self.udp_send_packet.keys():
+            packet = self.udp_send_packet[ack][1]
+            self.udp_send_func(packet)
 
     def udp_ack_send(self, ack_bytes: bytes, udp_send_func: Callable):
         packet = PACKET_TYPE_FILE_ACK + ack_bytes
