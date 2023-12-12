@@ -122,8 +122,8 @@ class FileTransfer:
             if(self.file_pointer == None): 
                 raise Exception()
         except:
-            print("[Error] file not found or opened");
-            return;
+            print("[Error] file not found or opened")
+            return
 
         # packet의 파일 이름(basename)을 전송한다.
         self.tcp_file_name_transfer(basename, tcp_send_func)
@@ -135,6 +135,8 @@ class FileTransfer:
         while(dataLeft and packet != None):
             tcp_send_func(packet)
             dataLeft, packet = self.tcp_file_data_packet()
+            print("dataLeft: ", dataLeft)
+            print("packet: ", packet)
         # 파일 data 전송 종료
 
         # TCP_FILE_TRANSFER_END을 전송하여 
@@ -154,17 +156,24 @@ class FileTransfer:
         packet_type, data = self.tcp_packet_unpack(packet)
     
         if packet_type == PACKET_TYPE_FILE_START:
+            print("===TCP RECEIVE==")
             basename = data.decode(ENCODING)
+            print("basename: ", basename)
             self.file_name = basename
-            file_path = './downloads/(tcp) '+basename
+            file_path = './downloads/(tcp) '+ basename
+            print("file path", file_path)
             # 파일의 이름을 받아 file_path 위치에 self.file_pointer를 생성한다.
             self.file_pointer = open(file_path, "ab")
+            print("file_pointer: ", self.file_pointer)
+            print("file path: ", file_path)
             return 0
 
         elif packet_type == PACKET_TYPE_FILE_DATA:
             # self.file_pointer에 전송 받은 data를 저장한다.
+            print("==TCP RECEIVING==")
             if(self.file_pointer):
                 self.file_pointer.write(data)
+            print("data: " , data)
             return 1
             
         elif packet_type == PACKET_TYPE_FILE_END:
@@ -253,13 +262,15 @@ class FileTransfer:
                self.file_pointer.close()
             basename = data.decode(ENCODING)            
             self.file_name = basename
-            file_path = './downloads/(udp) '+basename
+            file_path = './downloads/(udp) '+ basename
             print("@@@@=> file start")
             # 파일의 이름을 받아 file_path 위치에 self.file_pointer를 생성하고.
             # 그다음 받을 파일의 data의 시작 packet의 ack_num를 self.file_packet_start에 저장하여
             # 연속된 packet을 받을 수 있게 준비한다.
             self.file_pointer = open(file_path, "ab")
+            print("file path: ", file_path)
             self.file_packet_start = ack_num+1
+            print("ack_num : " , ack_num)
             return 0
 
         elif packet_type == PACKET_TYPE_FILE_DATA:  # file transfer
@@ -269,6 +280,7 @@ class FileTransfer:
                 # self.udp_recv_flag[ack_num]에서 확인할 수 있게 표시한다.
                 self.udp_recv_packet[ack_num] = data
                 self.udp_recv_flag[ack_num] = True
+                print("ack_num : " , ack_num)
                 pass
             # self.udp_recv_packet에 self.file_packet_start에서 부터 연속된
             # 패킷이 저장되어 있다면 이를 self.file_pointer를 이용해 파일로 저장하고 
