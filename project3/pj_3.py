@@ -18,13 +18,16 @@ class ARPTable:
         
         # todo: scapy의 all verbose를 show하도록 설정하고,
         # todo: scapy의 srp를 사용해 ARP response를 get
-        ans = None
+        #conf.verb = 1
+        arp_request = Ether(dst="ff:ff:ff:ff:ff:ff") / ARP(pdst=ips)
+        ans, _ = srp(arp_request, iface=interface, timeout=2, inter=0.1)
 
         for snd, rcv in ans:
             # todo: arp response (ans)로부터 ip address와 mac address를 get
-            ip_addr = None
-            mac_addr = None
+            ip_addr = rcv[ARP].psrc  # Sender IP address
+            mac_addr = rcv[ARP].hwsrc  # Sender MAC address
             self.ARP_table.append((ip_addr, mac_addr))
+
 
     def default_ip_nif(self):
         # gateway의 IP address와 네트워크 어댑터(네트워크 인터페이스)의 이름을 가져온다.

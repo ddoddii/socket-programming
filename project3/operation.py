@@ -1,8 +1,8 @@
 import struct
 from threading import Thread
 from time import sleep
-from project1.pj_1 import NetworkSocket
-from project2.pj_2 import FileTransfer
+from pj_1 import NetworkSocket
+from pj_2 import FileTransfer
 from pj_3 import ARPTable
 from config import *
 from tkinter import END
